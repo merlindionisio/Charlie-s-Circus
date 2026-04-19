@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // common helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.:]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // User Profile & Stats
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId)
+        && isValidUser(incoming())
+        && incoming().userId == userId;
+      allow update: if isOwner(userId) && isValidId(userId)
+        && isValidUser(incoming())
+        && incoming().userId == userId
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['stats', 'displayName', 'photoURL', 'email', 'userId'])
+        );
+
+      function isValidUser(data) {
+        return data.keys().hasAll(['userId']) 
+          && data.userId is string && data.userId.size() <= 128
+          && (!data.hasAny(['stats']) || data.stats is map)
+          && (!data.hasAny(['displayName']) || (data.displayName is string && data.displayName.size() <= 256))
+          && (!data.hasAny(['photoURL']) || (data.photoURL is string && data.photoURL.size() <= 2048))
+          && (!data.hasAny(['email']) || (data.email is string && data.email.size() <= 256));
+      }
+    }
+
+    // Leaderboards
+    match /leaderboards/{scoreId} {
+      allow list: if true;
+      allow get: if true;
+      allow create: if isSignedIn()
+        && isValidId(scoreId)
+        && isValidScore(incoming())
+        && incoming().userId == request.auth.uid;
+      
+      allow update, delete: if false;
+
+      function isValidScore(data) {
+        return data.keys().hasAll(['userId', 'displayName', 'score', 'act', 'difficulty', 'createdAt'])
+          && data.userId is string && data.userId.size() <= 128
+          && data.displayName is string && data.displayName.size() <= 256
+          && data.score is number
+          && data.act in ['juggling', 'plates', 'tightrope', 'bigtop']
+          && data.difficulty is string && data.difficulty.size() <= 50
+          && data.createdAt is string && data.createdAt.size() <= 128;
+      }
+    }
+  }
+}

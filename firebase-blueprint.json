@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and circus skill progress",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "email": { "type": "string" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "juggling": { "$ref": "#/entities/SkillProgress" },
+            "plates": { "$ref": "#/entities/SkillProgress" },
+            "tightrope": { "$ref": "#/entities/SkillProgress" },
+            "totalPerformanceScore": { "type": "number" }
+          }
+        }
+      },
+      "required": ["userId"]
+    },
+    "SkillProgress": {
+      "title": "SkillProgress",
+      "type": "object",
+      "properties": {
+        "level": { "type": "number" },
+        "xp": { "type": "number" }
+      }
+    },
+    "Score": {
+      "title": "Score",
+      "description": "Global high score record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "score": { "type": "number" },
+        "act": { "type": "string", "enum": ["juggling", "plates", "tightrope", "bigtop"] },
+        "difficulty": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and career progress"
+    },
+    "leaderboards/{scoreId}": {
+      "schema": "Score",
+      "description": "Global leaderboard entries"
+    }
+  }
+}
